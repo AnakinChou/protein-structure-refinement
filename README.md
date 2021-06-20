@@ -1,2 +1,3 @@
 # protein-structure-refinement
-protein structure refinement using deep learning
+
+we implement NeRF with Pytorch so that the model could be optimized by gradient descent.

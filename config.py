@@ -1,0 +1,1 @@
+HEAVY_ATOM = ['N', 'CA', 'C', 'O']
