@@ -8,6 +8,7 @@ import os
 class GraphDataset(Dataset):
     def __init__(self, data_dir):
         self.fileList = self.get_files(data_dir)
+        self.boundaries = torch.linspace(2, 20, 37)  # [2,2.5,...,20] num_bins=38 left closed and right open
 
     def get_files(self, data_dir):
         folders = os.listdir(data_dir)
@@ -26,7 +27,7 @@ class GraphDataset(Dataset):
 
     def __getitem__(self, idx):
         g, label_dict = dgl.load_graphs(self.fileList[idx])
-        return g[0], label_dict['label']
+        return g[0], torch.bucketize(label_dict['label'], self.boundaries, right=True)
 
 
 def collate(samples):

@@ -87,13 +87,13 @@ if __name__ == '__main__':
     batch_size = 4
     train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=collate)
     validate_dataloader = DataLoader(validate_set, batch_size=batch_size, shuffle=True, collate_fn=collate)
-    model = GraphTransformerNet(46, 12, 128, 1, 6).to(device)
+    model = GraphTransformerNet(46, 12, 128, 38, 6).to(device)
     learning_rate = 0.001
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=1, verbose=True)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.9)
-    criterion = nn.MSELoss()
+    criterion = nn.CrossEntropyLoss()
     epochs = 2
     dt = datetime.datetime.now().strftime('%m%d_%H%M')
     log_loss = open("loss_{}.txt".format(dt), 'w')

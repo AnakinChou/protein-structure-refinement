@@ -242,7 +242,7 @@ class MLPPredictor(nn.Module):
         self.W3 = nn.Linear(h_feats // 2, out_feats)
 
     def apply_edges(self, edges):
-        h = (edges.src['h'] + edges.dst['h'])/2
+        h = (edges.src['h'] + edges.dst['h']) / 2
         h = torch.cat([h, edges.data['h']], 1)
         return {'score': self.W3(F.relu(self.W2(F.relu(self.W1(h))))).squeeze(1)}
 
@@ -301,10 +301,10 @@ if __name__ == '__main__':
     g.edata['h'] = torch.randn((5, 15))
     g2.edata['h'] = torch.randn((7, 15))
     batch = dgl.batch([g, g2])
-    label = torch.randn(12)
-    model = GraphTransformerNet(57, 15, 512, 1, 10)
+    label = torch.randint(0, 37, [12])
+    model = GraphTransformerNet(57, 15, 128, 38, 2)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    criterion = nn.MSELoss()
+    criterion = nn.CrossEntropyLoss()
     model.train()
     # torch.save(model.state_dict(),'models/model_weight.pth')
     out = model(batch, batch.ndata['h'], batch.edata['h'])
@@ -316,7 +316,6 @@ if __name__ == '__main__':
     out = model(batch, batch.ndata['h'], batch.edata['h'])
     loss = criterion(out, label)
     print(loss)
-    print(batch.edges())
     g1, g2 = dgl.unbatch(batch)
     # print(g1.edges())
     # print(g2.edges())
