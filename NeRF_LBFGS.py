@@ -6,8 +6,6 @@ import os
 import sys
 import datetime
 
-
-
 MAIN_CHAIN = ['N', 'CA', 'C']
 HEAVY_ATOM = ['N', 'CA', 'C', 'O']
 # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -180,7 +178,7 @@ def refinement(dirname, learning_rate, iteration):
     native_file = os.path.join(dirname, os.path.split(dirname)[1] + '.pdb')
 
     log_file = os.path.join(dirname, 'log.txt')
-    log = open(log_file,'w')
+    log = open(log_file, 'w')
     cartesian_coords = cal_coords(filename)
     cartesian_coords_forO = cal_coords_forO(filename)
     dihedral, bond_angle, bond_length = convert_to_internal(cartesian_coords)
@@ -191,8 +189,9 @@ def refinement(dirname, learning_rate, iteration):
     pred_coords = internal_to_coords(first_three_atoms, dihedral, bond_angle, bond_length)
 
     native_coords = cal_coords(native_file)
-    native_distogram = cal_distogram(native_coords)
-    optimizer = torch.optim.LBFGS({dihedral},lr=learning_rate)
+    # native_distogram = cal_distogram(native_coords)
+    native_distogram = torch.from_numpy(np.load(os.path.join(dirname, 'pre_dis.npy'))).to(torch.float64)
+    optimizer = torch.optim.LBFGS({dihedral}, lr=learning_rate)
     # optimizer = torch.optim.Adam({dihedral}, lr=learning_rate)
     init_dihedral = dihedral.clone()
     optimal_diheral = dihedral.clone()
@@ -208,13 +207,14 @@ def refinement(dirname, learning_rate, iteration):
             loss = quadratic_potential(native_distogram, pred_coords)
             loss.backward(retain_graph=True)
             return loss
+
         if potential < optimal and i > TIMES / 2:
             optimal_diheral = dihedral.clone()
             optimal = potential.item()
-        log.write('{:>5}: {:15.5f}'.format(i, potential)+'\n')
+        log.write('{:>5}: {:15.5f}'.format(i, potential) + '\n')
         print('{:>5}: {:15.5f}'.format(i, potential))
         # optimizer.zero_grad()
-        # potential.backward()  
+        # potential.backward()
         optimizer.step(closure)
         # grad = dihedral.grad
         # grad[1::3] = 0
@@ -228,9 +228,9 @@ def refinement(dirname, learning_rate, iteration):
         optimal_diheral = dihedral.clone()
         optimal = potential.item()
     print('{:>5}: {:15.5f}'.format(TIMES, potential))
-    log.write('{:>5}: {:15.5f}'.format(TIMES, potential)+'\n')
+    log.write('{:>5}: {:15.5f}'.format(TIMES, potential) + '\n')
     print('optimal: {}'.format(optimal))
-    log.write('optimal: {}'.format(optimal)+'\n')
+    log.write('optimal: {}'.format(optimal) + '\n')
     log.close()
     # now_dihedral = dihedral.clone()
     dihedral_O[:-1].data = dihedral_O[:-1].data + (optimal_diheral - init_dihedral)[::3].data
@@ -248,16 +248,15 @@ def refinement(dirname, learning_rate, iteration):
 if __name__ == '__main__':
     start_time = time.time()
     data_path = './data'
-
     iteration = 1000
     lr = 1
-    # for target in os.listdir(data_path):
-    #     print(target)
-    #     target = os.path.join(data_path, target)
-    #     if not os.path.isdir(target):
-    #         continue
-    #     refinement(target, lr, iteration)
-    refinement('./data/R1042v2',lr,iteration)
+    for target in os.listdir(data_path):
+        print(target)
+        target = os.path.join(data_path, target)
+        if not os.path.isdir(target):
+            continue
+        refinement(target, lr, iteration)
+    # refinement('./data/R1029', lr, iteration)
     end_time = time.time()
     last_time = end_time - start_time
     hours, last_time = divmod(last_time, 3600)

@@ -136,6 +136,7 @@ class GraphTransformerLayer(nn.Module):
         self.residual = residual
         self.layer_norm = layer_norm
         self.batch_norm = batch_norm
+        self.activation = F.relu
 
         self.attention = MultiHeadAttentionLayer(in_dim, out_dim // num_heads, num_heads, use_bias)
 
@@ -199,13 +200,13 @@ class GraphTransformerLayer(nn.Module):
 
         # FFN for h
         h = self.FFN_h_layer1(h)
-        h = F.relu(h)
+        h = self.activation(h)
         h = F.dropout(h, self.dropout, training=self.training)
         h = self.FFN_h_layer2(h)
 
         # FFN for e
         e = self.FFN_e_layer1(e)
-        e = F.relu(e)
+        e = self.activation(e)
         e = F.dropout(e, self.dropout, training=self.training)
         e = self.FFN_e_layer2(e)
 
@@ -237,13 +238,14 @@ class MLPPredictor(nn.Module):
 
     def __init__(self, h_feats, out_feats):
         super().__init__()
-        self.W1 = nn.Linear(h_feats * 2, h_feats)
-        self.W2 = nn.Linear(h_feats, h_feats // 2)
-        self.W3 = nn.Linear(h_feats // 2, out_feats)
+        self.W1 = nn.Linear(h_feats * 3, h_feats * 2)
+        self.W2 = nn.Linear(h_feats * 2, h_feats)
+        self.W3 = nn.Linear(h_feats, out_feats)
+        # self.residual = nn.Linear(h_feats * 3, out_feats)
 
     def apply_edges(self, edges):
-        h = (edges.src['h'] + edges.dst['h']) / 2
-        h = torch.cat([h, edges.data['h']], 1)
+        # h = (edges.src['h'] + edges.dst['h']) / 2
+        h = torch.cat([edges.src['h'], edges.dst['h'], edges.data['h']], 1)
         return {'score': self.W3(F.relu(self.W2(F.relu(self.W1(h))))).squeeze(1)}
 
     def forward(self, g, h, e):
@@ -286,7 +288,9 @@ class GraphTransformerNet(nn.Module):
         h = self.node_emb(h)
         e = self.edge_emb(e)
         for graph_transformer in self.graph_transformers:
+            h_in, e_in = h, e
             h, e = graph_transformer(g, h, e)
+            h, e = h + h_in, e + e_in
         return self.mlp(g, h, e)
 
 

@@ -169,6 +169,15 @@ def cal_distogram(coords):
     return x
 
 
+def pred_distogram(initial_file, pred_dic):
+    distogram = cal_distogram(cal_coords(initial_file))
+    dic = torch.load(pred_dic)
+    u, v, pred = dic['u'], dic['v'], dic['pred']
+    for i in range(len(u)):
+        distogram[u[i], v[i]] = pred[i]
+    return distogram.clone()
+
+
 def quadratic_potential(native_distogram, pred_coords):
     pred_distogram = cal_distogram(pred_coords)
     potential = torch.pow(pred_distogram - native_distogram, 2).sum()
@@ -190,8 +199,9 @@ def refinement(dirname, learning_rate, iteration):
     # NeRF
     pred_coords = internal_to_coords(first_three_atoms, dihedral, bond_angle, bond_length)
 
-    native_coords = cal_coords(native_file)
-    native_distogram = cal_distogram(native_coords)
+    # native_coords = cal_coords(native_file)
+    # native_distogram = cal_distogram(native_coords)
+    native_distogram = pred_distogram(filename, 'data/R1029/pred.pt')
     # optimizer = FullBatchLBFGS({dihedral})
     optimizer = torch.optim.Adam({dihedral}, lr=learning_rate)
     init_dihedral = dihedral.clone()
@@ -212,7 +222,7 @@ def refinement(dirname, learning_rate, iteration):
             optimal = potential.item()
         print('{:>5}: {:15.5f}'.format(i, potential))
         optimizer.zero_grad()
-        potential.backward()
+        potential.backward(retain_graph=True)
         optimizer.step()
         # grad = dihedral.grad
         # grad[1::3] = 0
@@ -253,7 +263,7 @@ if __name__ == '__main__':
     #     if not os.path.isdir(target):
     #         continue
     #     refinement(target, lr, iteration)
-    refinement('./data/R1042v2',lr,iteration)
+    refinement('./data/R1029',lr,iteration)
     end_time = time.time()
     last_time = end_time - start_time
     hours, last_time = divmod(last_time, 3600)
